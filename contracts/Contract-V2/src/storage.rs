@@ -20,6 +20,10 @@ pub enum DataKeyV2 {
     // -- Stream storage ------------------------------------------
     /// Individual stream record, keyed by stream ID.
     Stream(u64),
+
+    // -- Dust threshold ------------------------------------------
+    /// Per-asset minimum stream amount. Falls back to DEFAULT_MIN_VALUE.
+    MinValue(Address),
 }
 
 /// Global stream counter — stored under a short Symbol to match
@@ -88,4 +92,28 @@ pub fn bump_instance(env: &Env) {
     env.storage()
         .instance()
         .extend_ttl(INSTANCE_TTL_THRESHOLD, INSTANCE_TTL_BUMP);
+}
+
+// ----------------------------------------------------------------
+// Dust threshold helpers
+// ----------------------------------------------------------------
+
+/// 10 XLM in stroops (1 XLM = 10_000_000 stroops).
+pub const DEFAULT_MIN_VALUE: i128 = 100_000_000; // 10 XLM
+
+/// Set a per-asset minimum stream amount. Admin-only enforcement is
+/// done in the contract layer.
+pub fn set_min_value(env: &Env, asset: &Address, min: i128) {
+    env.storage()
+        .instance()
+        .set(&DataKeyV2::MinValue(asset.clone()), &min);
+    bump_instance(env);
+}
+
+/// Return the minimum stream amount for `asset`, defaulting to 10 XLM.
+pub fn get_min_value(env: &Env, asset: &Address) -> i128 {
+    env.storage()
+        .instance()
+        .get(&DataKeyV2::MinValue(asset.clone()))
+        .unwrap_or(DEFAULT_MIN_VALUE)
 }
