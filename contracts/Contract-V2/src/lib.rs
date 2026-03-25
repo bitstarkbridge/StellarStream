@@ -4,6 +4,7 @@ use soroban_sdk::xdr::ToXdr;
 use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env, Vec};
 
 mod errors;
+mod math;
 mod storage;
 mod types;
 mod v1_interface;
