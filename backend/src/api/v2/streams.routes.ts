@@ -3,6 +3,7 @@ import { z } from "zod";
 import asyncHandler from "../../utils/asyncHandler.js";
 import { StreamService } from "../../services/stream.service.js";
 import stellarAddressSchema from "../../validation/stellar.js";
+import { prisma } from "../../lib/db.js";
 
 const router = Router();
 const streamService = new StreamService();
@@ -43,6 +44,35 @@ router.get(
             v1: streams,
             v2: []
         });
+    })
+);
+
+const patchStreamPrivacySchema = z.object({
+    isPrivate: z.boolean()
+});
+
+/**
+ * PATCH /api/v2/streams/:id/privacy
+ * Toggles the privacy of a stream.
+ */
+router.patch(
+    "/:id/privacy",
+    asyncHandler(async (req: Request, res: Response) => {
+        const parseResult = patchStreamPrivacySchema.safeParse(req.body);
+        if (!parseResult.success) {
+            res.status(400).json({ error: "Invalid body. 'isPrivate' boolean is required." });
+            return;
+        }
+
+        const streamId = req.params.id;
+        const { isPrivate } = parseResult.data;
+
+        const updated = await prisma.stream.update({
+            where: { id: streamId },
+            data: { isPrivate }
+        });
+
+        res.json({ success: true, data: updated });
     })
 );
 
