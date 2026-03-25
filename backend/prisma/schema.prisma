@@ -25,11 +25,22 @@ model Stream {
   withdrawn    String?      @default("0")
   legacy       Boolean      @default(false) // true = originated from V1 contract
   migrated     Boolean      @default(false) // true = V1 stream superseded by V2
+  isPrivate    Boolean      @default(false)
+  createdAt    DateTime     @default(now())
 
   @@index([sender])
   @@index([receiver])
   @@index([streamId])
   @@index([legacy])
+}
+
+// Token prices for leaderboard volume calculations
+model TokenPrice {
+  tokenAddress String   @id
+  symbol       String
+  decimals     Int      @default(7)
+  priceUsd     Float    @default(0)
+  updatedAt    DateTime @updatedAt
 }
 
 // Registered Webhooks for external notifications
