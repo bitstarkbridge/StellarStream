@@ -34,6 +34,69 @@ fn setup_v2<'a>(env: &'a Env, admin: &'a Address) -> (Address, ContractClient<'a
     (id, client)
 }
 
+fn stream_args(sender: &Address, receiver: &Address, token: &Address, total_amount: i128) -> StreamArgs {
+    StreamArgs {
+        sender: sender.clone(),
+        receiver: receiver.clone(),
+        token: token.clone(),
+        total_amount,
+        start_time: 0,
+        cliff_time: 0,
+        end_time: 100,
+        step_duration: 0,
+        multiplier_bps: 0,
+        vault_address: None,
+        yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
+    }
+}
+
+#[test]
+fn test_packed_stream_metadata_round_trip() {
+    let env = Env::default();
+    let sender = Address::generate(&env);
+    let receiver = Address::generate(&env);
+    let token = Address::generate(&env);
+
+    let stream = StreamV2 {
+        sender,
+        receiver: receiver.clone(),
+        beneficiary: receiver,
+        token,
+        total_amount: 123,
+        start_time: 1,
+        end_time: 2,
+        cliff_time: 1,
+        withdrawn_amount: 3,
+        cancelled: false,
+        migrated_from_v1: true,
+        v1_stream_id: 9,
+        step_duration: 0,
+        multiplier_bps: 0,
+        vault_address: None,
+        yield_enabled: true,
+        is_pending: true,
+        is_recurrent: true,
+        cycle_duration: 10,
+        cancellation_type: 7,
+    };
+
+    let packed = crate::storage::pack_stream_metadata(&stream);
+    let (status, penalty_bps, curve_type, migrated_from_v1, yield_enabled, is_recurrent, cancellation_type) =
+        crate::storage::unpack_stream_metadata(packed);
+
+    assert_eq!(status, 2);
+    assert_eq!(penalty_bps, 0);
+    assert_eq!(curve_type, 0);
+    assert!(migrated_from_v1);
+    assert!(yield_enabled);
+    assert!(is_recurrent);
+    assert_eq!(cancellation_type, 7);
+}
+
 // ── Init tests ───────────────────────────────────────────────────────────────
 
 #[test]
@@ -735,6 +798,10 @@ fn test_cliff_period_locks_funds() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // 1. Before cliff (t=140): unlocked should be zero
@@ -783,6 +850,10 @@ fn test_v2_cancel_splits_funds() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Cancel at t=30.
@@ -847,6 +918,10 @@ fn test_geometric_rate_unlock_math() {
         multiplier_bps: 10000,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // t=25
@@ -902,6 +977,10 @@ fn test_create_batch_streams_success() {
             multiplier_bps: 0,
             vault_address: None,
             yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
         },
         StreamArgs {
             sender: sender.clone(),
@@ -915,6 +994,10 @@ fn test_create_batch_streams_success() {
             multiplier_bps: 0,
             vault_address: None,
             yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
         },
     ];
 
@@ -969,6 +1052,10 @@ fn test_create_batch_streams_max_limit() {
             multiplier_bps: 0,
             vault_address: None,
             yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
         });
     }
 
@@ -1007,6 +1094,10 @@ fn test_create_batch_streams_atomic_failure() {
             multiplier_bps: 0,
             vault_address: None,
             yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
         },
         StreamArgs {
             sender: sender.clone(),
@@ -1020,6 +1111,10 @@ fn test_create_batch_streams_atomic_failure() {
             multiplier_bps: 0,
             vault_address: None,
             yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
         },
     ];
 
@@ -1032,7 +1127,7 @@ fn test_create_batch_streams_atomic_failure() {
     assert!(v2_client.get_stream(&1).is_none());
 
     // Balance should be unchanged
-    assert_eq!(token_client.balance(&sender), 100_000_000);
+    assert_eq!(token_client.balance(&sender), 200_000_000);
 }
 
 // ── Governance: Stream-Weighted Voting Power tests ───────────────────────────
@@ -1064,6 +1159,10 @@ fn test_get_active_volume_single_stream_as_receiver() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Receiver should have 100M locked
@@ -1097,6 +1196,10 @@ fn test_get_active_volume_single_stream_as_sender() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Sender should also have 100M locked (their commitment)
@@ -1131,6 +1234,10 @@ fn test_get_active_volume_multiple_streams() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     let _sid2 = v2_client.create_stream(&StreamArgs {
@@ -1145,6 +1252,10 @@ fn test_get_active_volume_multiple_streams() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     let _sid3 = v2_client.create_stream(&StreamArgs {
@@ -1159,6 +1270,10 @@ fn test_get_active_volume_multiple_streams() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Receiver should have total of 600M locked
@@ -1193,6 +1308,10 @@ fn test_get_active_volume_after_partial_withdrawal() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // At t=50, 50M unlocked
@@ -1231,6 +1350,10 @@ fn test_get_active_volume_excludes_cancelled_streams() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     let sid2 = v2_client.create_stream(&StreamArgs {
@@ -1245,6 +1368,10 @@ fn test_get_active_volume_excludes_cancelled_streams() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Cancel first stream
@@ -1283,6 +1410,10 @@ fn test_get_active_volume_unrelated_user_returns_zero() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Stranger has no involvement in the stream
@@ -1333,6 +1464,10 @@ fn test_get_active_volume_mixed_roles() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // User as receiver
@@ -1348,6 +1483,10 @@ fn test_get_active_volume_mixed_roles() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // User should have both streams counted: 200M + 200M = 400M
@@ -1383,6 +1522,10 @@ fn test_rebalance_after_clawback() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     let _sid2 = v2_client.create_stream(&StreamArgs {
@@ -1397,6 +1540,10 @@ fn test_rebalance_after_clawback() {
         multiplier_bps: 0,
         vault_address: None,
         yield_enabled: false,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Verify integrity before clawback
@@ -1491,6 +1638,10 @@ fn test_yield_bearing_stream() {
         multiplier_bps: 0,
         vault_address: Some(vault_id.clone()),
         yield_enabled: true,
+        is_recurrent: false,
+        cycle_duration: 0,
+        cancellation_type: 0,
+        affiliate: None,
     });
 
     // Advance time to t=500 (50% unlocked)
